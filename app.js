@@ -33,6 +33,18 @@ const stateObjectToResponseObject = (dbObject) => {
   };
 };
 
+const districtObjectToResponseObject = (dbObject) => {
+  return {
+    districtId: dbObject.district_id,
+    districtName: dbObject.district_name,
+    stateId: dbObject.state_id,
+    cases: dbObject.cases,
+    cured: dbObject.cured,
+    active: dbObject.active,
+    deaths: dbObject.deaths,
+  };
+};
+
 //Authentiction
 const authenticateToken = (request, response, next) => {
   let jwtToken;
@@ -120,3 +132,84 @@ app.post("/districts/", authenticateToken, async (request, response) => {
   await db.run(postDistrictQuery);
   response.send("District Successfully Added");
 });
+
+//get District
+app.get(
+  "/districts/:districtId/",
+  authenticateToken,
+  async (request, response) => {
+    const { districtId } = request.params;
+    const getDistrictQuery = `
+    SELECT * FROM district
+    WHERE district_id = ${districtId};`;
+    const district = await db.get(getDistrictQuery);
+    response.send(districtObjectToResponseObject(district));
+  }
+);
+
+//Delete District
+app.delete(
+  "/districts/:districtId/",
+  authenticateToken,
+  async (request, response) => {
+    const { districtId } = request.params;
+    const deleteDistrictQuery = `
+    SELECT * FROM district
+    WHERE district_id = ${districtId};`;
+    await db.get(deleteDistrictQuery);
+    response.send("District Removed");
+  }
+);
+
+//update District
+
+app.put(
+  "/districts/:districtId/",
+  authenticateToken,
+  async (request, response) => {
+    const { districtId } = request.params;
+    const {
+      districtName,
+      stateId,
+      cases,
+      cured,
+      active,
+      deaths,
+    } = request.body;
+    const updateDistrictQuery = `
+    UPDATE district
+    SET 
+    district_name = '${districtName}',
+    state_id = ${stateId},
+    cases = ${cases},
+    cured = ${cured},
+    active = ${active},
+    deaths = ${deaths}
+    WHERE district_name = '${districtName}';`;
+    await db.run(updateDistrictQuery);
+    response.send("District Details Updated");
+  }
+);
+
+//Get stats
+app.get(
+  "/states/:stateId/stats/",
+  authenticateToken,
+  async (request, response) => {
+    const { stateId } = request.params;
+    const getStatsQuery = `SELECT
+    SUM(cases),
+    SUM(cured),
+    SUM(active),
+    SUM(deaths)
+    FROM district
+    WHERE state_id = ${stateId};`;
+    const stats = await db.get(getStatsQuery);
+    response.send({
+      totalCases: stats["SUM(cases)"],
+      totalCured: stats["SUM(cured)"],
+      totalActive: stats["SUM(active)"],
+      totalDeaths: stats["SUM(deaths)"],
+    });
+  }
+);
